@@ -1,95 +1,109 @@
 package com.example.week1.ui
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.example.week1.domain.*
-import java.time.LocalDate
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.week1.domain.Task
+import com.example.week1.viewmodel.TaskViewModel
 
 @Composable
-fun HomeScreen() {
+fun HomeScreen(vm: TaskViewModel = viewModel()) {
 
-    var tasks by remember { mutableStateOf(MockData.tasks) }
+    var newTitle by remember { mutableStateOf("") }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        Text(text = "Tasks")
+        Text("Tasks")
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(Modifier.height(12.dp))
 
-
+        // Add new task UI: TextField + Button
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
+            OutlinedTextField(
+                value = newTitle,
+                onValueChange = { newTitle = it },
+                modifier = Modifier.weight(1f),
+                label = { Text("New task title") },
+                singleLine = true
+            )
             Button(onClick = {
-                val newId = (tasks.maxOfOrNull { it.id } ?: 0) + 1
-                val newTask = Task(
-                    id = newId,
-                    title = "New Task $newId",
-                    description = "Created using button",
-                    priority = 3,
-                    dueDate = LocalDate.now().plusDays(6),
-                    done = false
-                )
-                tasks = addTask(tasks, newTask)
+                vm.addTaskFromTitle(newTitle)
+                newTitle = ""
             }) {
                 Text("Add")
             }
-
-            Button(onClick = {
-                val firstId = tasks.firstOrNull()?.id ?: return@Button
-                tasks = toggleDone(tasks, firstId)
-            }) {
-                Text("Toggle first")
-            }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(Modifier.height(12.dp))
 
-
+        // Controls: filter + sort
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Button(onClick = { tasks = filterByDone(MockData.tasks, true) }) {
-                Text("Show done")
-            }
-
-            Button(onClick = { tasks = filterByDone(MockData.tasks, false) }) {
-                Text("Show not done")
-            }
+            Button(onClick = { vm.filterByDone(true) }) { Text("Show done") }
+            Button(onClick = { vm.filterByDone(false) }) { Text("Show not done") }
+            Button(onClick = { vm.sortByDueDate() }) { Text("Sort by due") }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(Modifier.height(12.dp))
 
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        // List with LazyColumn
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Button(onClick = { tasks = sortByDueDate(tasks) }) {
-                Text("Sort by due date")
+            items(vm.tasks, key = { it.id }) { task ->
+                TaskRow(
+                    task = task,
+                    onToggle = { vm.toggleDone(task.id) },
+                    onDelete = { vm.removeTask(task.id) }
+                )
             }
         }
+    }
+}
 
-        Spacer(modifier = Modifier.height(16.dp))
+@Composable
+private fun TaskRow(
+    task: Task,
+    onToggle: () -> Unit,
+    onDelete: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Checkbox(
+            checked = task.done,
+            onCheckedChange = { onToggle() }
+        )
 
-        // Task list (Text rows)
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            tasks.forEach { task ->
-                Column {
-                    Text(text = "${task.title} (priority ${task.priority})")
-                    Text(text = task.description)
-                    Text(text = "Due: ${task.dueDate} | Done: ${task.done}")
-                }
-            }
+        Spacer(Modifier.width(8.dp))
+
+        Text(
+            text = task.title,
+            modifier = Modifier.weight(1f)
+        )
+
+        Button(onClick = onDelete) {
+            Text("Delete")
         }
     }
 }
