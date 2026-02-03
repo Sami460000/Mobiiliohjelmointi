@@ -30,12 +30,14 @@ class TaskViewModel : ViewModel() {
 
             if (doneFilter != null) {
                 list = list.filter { it.done == doneFilter }
+
             }
 
             // Sort
             list = when (dir) {
                 SortDirection.ASC -> list.sortedBy { it.dueDate }
                 SortDirection.DESC -> list.sortedByDescending { it.dueDate }
+
             }
 
             list
@@ -103,4 +105,22 @@ class TaskViewModel : ViewModel() {
     }
 
     fun currentSortDirection(): SortDirection = _sortDirection.value
+
+    fun addTaskFromDialog(title: String, description: String, dueDate: LocalDate) {
+        val trimmedTitle = title.trim()
+        if (trimmedTitle.isEmpty()) return
+
+        val newId = (_allTasks.value.maxOfOrNull { it.id } ?: 0) + 1
+        addTask(
+            Task(
+                id = newId,
+                title = trimmedTitle,
+                description = description.trim(),
+                priority = 3,
+                dueDate = dueDate,
+                done = false
+            )
+        )
+    }
+
 }

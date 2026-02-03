@@ -1,5 +1,6 @@
 package com.example.week1.view
 
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -11,31 +12,33 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.week1.model.Task
 import com.example.week1.viewmodel.TaskViewModel
+import java.time.LocalDate
 import androidx.compose.material3.ExperimentalMaterial3Api
-import com.example.week1.viewmodel.SortDirection
-
-
 @OptIn(ExperimentalMaterial3Api::class)
-
-
 @Composable
-fun HomeScreen(
+fun CalendarScreen(
     vm: TaskViewModel,
-    onOpenCalendar: () -> Unit,
-    onOpenThird: () -> Unit)
-
-{
+    onBackToHome: () -> Unit,
+    onOpenThird: () -> Unit
+) {
     val tasks by vm.tasks.collectAsState()
 
     var selectedTask by remember { mutableStateOf<Task?>(null) }
     var dialogMode by remember { mutableStateOf<DialogMode?>(null) }
 
+    // group by dueDate
+    val grouped: Map<LocalDate, List<Task>> = remember(tasks) {
+        tasks.groupBy { it.dueDate }
+    }
+
+    val datesSorted = remember(grouped) { grouped.keys.sorted() }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Tasks") },
+                title = { Text("Calendar") },
                 actions = {
-                    TextButton(onClick = onOpenCalendar) { Text("Calendar") }
+                    TextButton(onClick = onBackToHome) { Text("Tasks") }
                     TextButton(onClick = { dialogMode = DialogMode.ADD }) { Text("+") }
                     TextButton(onClick = { onOpenThird() }) { Text("Third") }
 
@@ -43,12 +46,6 @@ fun HomeScreen(
             )
         }
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .padding(padding)
-                .fillMaxSize()
-                .padding(16.dp)
-        ){
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -74,43 +71,49 @@ fun HomeScreen(
                 .padding(padding)
                 .fillMaxSize()
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            items(tasks, key = { it.id }) { task ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            selectedTask = task
-                            dialogMode = DialogMode.EDIT
-                        }
-                ) {
-                    Row(
-                        modifier = Modifier.padding(10.dp),
-                        verticalAlignment = Alignment.CenterVertically
+            datesSorted.forEach { date ->
+                item {
+                    Text(
+                        text = date.toString(),
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Spacer(Modifier.height(6.dp))
+                }
+
+                items(grouped[date].orEmpty(), key = { it.id }) { task ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                selectedTask = task
+                                dialogMode = DialogMode.EDIT
+                            }
                     ) {
-                        Checkbox(
-                            checked = task.done,
-                            onCheckedChange = { vm.toggleDone(task.id) }
-                        )
-
-                        Spacer(Modifier.width(8.dp))
-
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(task.title)
-                            Text("Due: ${task.dueDate}")
-                        }
-
-                        TextButton(onClick = { vm.removeTask(task.id) }) {
-                            Text("Delete")
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = task.done,
+                                onCheckedChange = { vm.toggleDone(task.id) }
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(task.title, modifier = Modifier.weight(1f))
+                            TextButton(onClick = { vm.removeTask(task.id) }) {
+                                Text("Delete")
+                            }
                         }
                     }
                 }
+
+                item { Spacer(Modifier.height(12.dp)) }
             }
         }
     }
 
-    // Dialogs
+    // Dialogs (same as Home)
     if (dialogMode == DialogMode.ADD) {
         TaskDialog(
             mode = DialogMode.ADD,
@@ -119,9 +122,9 @@ fun HomeScreen(
                 vm.addTaskFromDialog(t, d, date)
                 dialogMode = null
             },
-            onSaveEdit = { /* not used */ },
-            onDelete = { /* not used */ }
-    )
+            onSaveEdit = { },
+            onDelete = { }
+        )
     }
 
     if (dialogMode == DialogMode.EDIT && selectedTask != null) {
@@ -145,4 +148,4 @@ fun HomeScreen(
             }
         )
     }
-}}
+}
